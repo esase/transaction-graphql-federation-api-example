@@ -1,0 +1,22 @@
+overwrite: true
+schema: "./src/**/typeDefs.ts"
+generates:
+  schema.graphql:
+    plugins:
+      - schema-ast
+    config:
+      includeDirectives: true
+  ./src/types/generated-types.ts: # Typescript types (output generated file)
+    plugins: # List of needed plugins (installed as devDeps)
+      - typescript
+      - typescript-resolvers
+    config:
+      federation: true
+      optionalResolveType: true
+      maybeValue: T | null | undefined
+      inputMaybeValue: T | undefined
+      useIndexSignature: true
+      makeResolverTypeCallable: true
+      contextType: ../types/context#ServiceContext
+      mappers:
+        Transaction: ../modules/transactions/data-source#TransactionModel

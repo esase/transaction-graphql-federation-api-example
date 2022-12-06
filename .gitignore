@@ -1,0 +1,14 @@
+/.yarn/*
+!/.yarn/releases
+!/.yarn/plugins
+!/.yarn/sdks
+!/.yarn/cache
+#/.pnp.*
+k8s/dev.yaml
+.DS_Store
+dist
+.idea
+.vscode
+coverage/
+src/types/generated-types.ts
+schema.graphql

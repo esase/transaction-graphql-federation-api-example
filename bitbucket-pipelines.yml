@@ -1,0 +1,168 @@
+image: atlassian/default-image:3
+
+definitions:
+  script:
+    - &k8s-envsubst export key='$key' && export value='$value' && envsubst < ./infra/k8s/service-deployment.tpl.yaml > k8s.yaml
+    - &use-env source env.sh
+    - &service-prepare npm i -g yarn && yarn
+    - &service-unit-test yarn lint && yarn test
+    - &service-integration-test yarn integration-test
+  steps:
+
+    ##########################
+    ## ENV specific configs ##
+    ##########################
+    - step: &use-shared-env-vars
+        name: Setup shared env vars
+        script:
+          - *use-env
+          - echo "export SERVICE_NAME=myc2-transaction-api" >> env.sh
+          - echo "export REPLICAS=1" >> env.sh
+          - echo "export PORT=80" >> env.sh
+          - echo "export IMAGE_NAME=\$DOCKER_REGISTRY/\$SERVICE_NAME:\$BITBUCKET_COMMIT" >> env.sh
+        artifacts:
+          - env.sh
+
+    - step: &use-test-env
+        name: Setup test env variables
+        script:
+          - echo "export DOCKER_REGISTRY=registry-test.mycointainer.com" >> env.sh
+          - echo "export DOCKER_USERNAME=\$DOCKER_USERNAME_TEST" >> env.sh
+          - echo "export DOCKER_PASSWORD=\$DOCKER_PASSWORD_TEST" >> env.sh
+          - echo "export ENV_NAME=test" >> env.sh
+        artifacts:
+          - env.sh
+
+    - step: &use-staging-env
+        name: Setup staging env variables
+        script:
+          - echo "export DOCKER_REGISTRY=registry.mycointainer.com" >> env.sh
+          - echo "export DOCKER_USERNAME=\$DOCKER_USERNAME" >> env.sh
+          - echo "export DOCKER_PASSWORD=\$DOCKER_PASSWORD" >> env.sh
+          - echo "export ENV_NAME=staging" >> env.sh
+        artifacts:
+          - env.sh
+
+    - step: &use-production-env
+        name: Setup production env variables
+        script:
+          - echo "export DOCKER_REGISTRY=registry.mycointainer.com" >> env.sh
+          - echo "export DOCKER_USERNAME=\$DOCKER_USERNAME" >> env.sh
+          - echo "export DOCKER_PASSWORD=\$DOCKER_PASSWORD" >> env.sh
+          - echo "export ENV_NAME=prod" >> env.sh
+        artifacts:
+          - env.sh
+
+    ##########################
+    ## Build & deploy steps ##
+    ##########################
+
+    - step: &run-test
+        name: Run unit tests
+        script:
+          - *service-prepare
+          - *service-unit-test
+   
+    - step: &run-integration-test
+        name: Run integration tests
+        script:
+          - *service-prepare
+          - *service-integration-test
+        services:
+          - docker
+
+    - step: &build
+        name: Build & push docker image
+        script:
+          - *use-env
+          - docker build -f ./infra/docker/Dockerfile -t $IMAGE_NAME .
+          - docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password $DOCKER_PASSWORD
+          - docker push $IMAGE_NAME
+        services:
+          - docker
+
+    - step: &publish-subgraph
+        name: Publish subgraph to Apollo
+        image: node:lts-alpine
+        script:
+          - *use-env
+          - yarn
+          - yarn generate-gql-types
+          - npx -p @apollo/rover@latest
+            rover subgraph check MyCointainer@$ENV_NAME
+            --name $SERVICE_NAME
+            --schema ./schema.graphql
+          - npx -p @apollo/rover@latest
+            rover subgraph publish MyCointainer@$ENV_NAME
+            --name $SERVICE_NAME
+            --schema ./schema.graphql
+            --routing-url http://$SERVICE_NAME/graphql
+
+    - step: &deploy-test
+        name: Deploy to test cluster
+        deployment: test
+        script:
+          - *use-env
+          - *k8s-envsubst
+          - pipe: atlassian/kubectl-run:3.2.0
+            variables:
+              KUBE_CONFIG: $KUBE_CONFIG_TEST
+              KUBECTL_COMMAND: 'apply'
+              RESOURCE_PATH: 'k8s.yaml'
+
+    - step: &deploy-staging
+        name: Deploy to staging cluster
+        deployment: staging
+        script:
+          - *use-env
+          - *k8s-envsubst
+          - pipe: atlassian/kubectl-run:3.2.0
+            variables:
+              KUBE_CONFIG: $KUBE_CONFIG_STAGING
+              KUBECTL_COMMAND: 'apply'
+              RESOURCE_PATH: 'k8s.yaml'
+
+    - step: &deploy-production
+        name: Deploy to production
+        deployment: production
+        script:
+          - *use-env
+          - *k8s-envsubst
+          - pipe: atlassian/aws-eks-kubectl-run:2.2.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_PROD_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_PROD_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: $AWS_PROD_REGION
+              CLUSTER_NAME: 'myc2prod'
+              KUBECTL_COMMAND: 'apply'
+              RESOURCE_PATH: 'k8s.yaml'
+
+pipelines:
+  default:
+    - step: *run-test
+    - step: *run-integration-test
+
+  branches:
+    develop:
+      - step: *run-test
+      - step: *run-integration-test
+      - step: *use-test-env
+      - step: *use-shared-env-vars
+      - step: *build
+      - step: *publish-subgraph
+      - step: *deploy-test
+    main:
+      - step: *run-test
+      - step: *run-integration-test
+      - step: *use-staging-env
+      - step: *use-shared-env-vars
+      - step: *build
+      - step: *publish-subgraph
+      - step: *deploy-staging
+  custom:
+    PRODUCTION:
+      - step: *use-production-env
+      - step: *use-shared-env-vars
+      - step: *build
+      - step: *publish-subgraph
+      - step: *deploy-production

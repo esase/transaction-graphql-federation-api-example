@@ -1,0 +1,10 @@
+{
+    "verbose": true,
+    "ignore": [
+        "./src/types/generated-types.d.ts"
+    ],
+    "events": {
+        "restart": "yarn generate-gql-types"
+    },
+    "ext": "graphql,ts"
+}
