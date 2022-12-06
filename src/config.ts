@@ -17,13 +17,13 @@ export interface Config {
 
 export default config(env => Object.freeze({
     env: env('NODE_ENV', ENV_DEVELOPMENT),
-    serviceName: 'myc2-transaction-api',
+    serviceName: 'transaction-api-example',
     server: {
         port: parseInt(env('SERVER_PORT', 3001))
     },
-    rabbitMqUrl: env('RABBITMQ_URL', 'amqp://localhost'),
+    rabbitMqUrl: env('RABBITMQ_URL'),
     isPlaygroundEnabled: env('IS_PLAYGROUND_ENABLED', 'true') === 'true',
-    mongoUrl: env('MONGO_URL_TRANSACTIONS_SERVICE', 'mongodb+srv://v2_cluster_tx:TmwsGGwcK73fE8p1@transactions.zqnp7.mongodb.net/transactions'),
+    mongoUrl: env('MONGO_URL_TRANSACTIONS_SERVICE'),
     logLevel: env('LOG_LEVEL', 'debug'),
     get isDev(): boolean {
         return this.env === ENV_DEVELOPMENT;
