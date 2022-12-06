@@ -24,14 +24,12 @@ infra/k8s/service-deployment.tpl.yaml - k8s deployment config template
 ```
 
 ## How to deploy my service to test/staging cluster (env vars via secrets approach)
-1. Change `SERVICE_NAME` in `bitbucket-pipelines.yml`; The name should start with `myc2-` prefix
+1. Change `SERVICE_NAME` in `bitbucket-pipelines.yml`; The name should start with  prefix
 2. If your service requires env vars, create secrets template at `infra/k8s/secrets.sample.yaml` (with empty values)
 3. Configure deployment to extract env vars from secrets `infra/k8s/service-deployment.tpl.yaml`
 4. Deploy secrets to test/staging cluster manually or ask someone. (do not commit secrets values to git)
 5. Activate pipelines for service repo
 6. Push `develop` branch to deploy to test env
-
-See [account-service](https://bitbucket.org/myc-team/account-service/src/master/k8s/) for example.
 
 ## k8s deployment env vars
 These vars are set in `bitbucket-pipelines.yaml`
@@ -55,9 +53,7 @@ Call the `yarn integration-test` command from the project's root dir to launch i
 
 PS: All the integration tests are launched automatically in the bitbucket pipelines you don't need to run them manually.
 
-## Shared codebase
 
-To share code parts across services [services-common](https://bitbucket.org/myc-team/services-common/src/master/) is used. It's distributed as private npm package.
 
 ### Modify "services-common" imports locally
 
@@ -70,7 +66,6 @@ Imagine you need to reconfigure some `services-common/log` for your needs:
 
 Check `src/shared/log.ts` for example.
 
-If it doesn't work, consider contributing to [services-common](https://bitbucket.org/myc-team/services-common/src/master/) directly.
 
 
 ## Commands
