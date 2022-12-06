@@ -1,5 +1,5 @@
 {
-  "name": "myc2-transaction-api",
+  "name": "transaction-api-example",
   "packageManager": "yarn@3.2.2",
   "scripts": {
     "dev": "nodemon src/index.ts",
@@ -14,8 +14,6 @@
   "dependencies": {
     "@apollo/subgraph": "^2.0.2",
     "@graphql-codegen/schema-ast": "^2.4.1",
-    "@mycointainer.ou/gql-common": "^0.1.23",
-    "@mycointainer.ou/services-common": "^0.1.28",
     "apollo-datasource": "^3.3.1",
     "apollo-datasource-mongodb": "^0.5.4",
     "apollo-server": "^3.8.2",
